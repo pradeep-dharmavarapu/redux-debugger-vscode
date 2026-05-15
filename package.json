@@ -1,0 +1,127 @@
+{
+  "name": "redux-state-debugger",
+  "displayName": "Redux State Debugger",
+  "description": "Real-time Redux state inspector and unnecessary re-render detector for React applications",
+  "version": "1.0.0",
+  "publisher": "pradeep-kumar-dharmavarapu",
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": ["Debuggers", "Other"],
+  "keywords": ["redux", "react", "debugger", "performance", "re-render"],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact",
+    "onLanguage:javascriptreact"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "reduxDebugger.start",
+        "title": "Redux Debugger: Start Monitoring",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "reduxDebugger.stop",
+        "title": "Redux Debugger: Stop Monitoring",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "reduxDebugger.clear",
+        "title": "Redux Debugger: Clear History",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "reduxDebugger.exportReport",
+        "title": "Redux Debugger: Export Performance Report"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "reduxStateTree",
+          "name": "Redux State Tree",
+          "icon": "$(symbol-object)"
+        },
+        {
+          "id": "reduxActionHistory",
+          "name": "Action History",
+          "icon": "$(history)"
+        },
+        {
+          "id": "rerenderDetector",
+          "name": "Re-render Detector",
+          "icon": "$(warning)"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Redux State Debugger",
+      "properties": {
+        "reduxDebugger.enableRerenderDetection": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable unnecessary re-render detection"
+        },
+        "reduxDebugger.rerenderThreshold": {
+          "type": "number",
+          "default": 3,
+          "description": "Number of re-renders before flagging as unnecessary"
+        },
+        "reduxDebugger.maxActionHistory": {
+          "type": "number",
+          "default": 100,
+          "description": "Maximum number of actions to keep in history"
+        },
+        "reduxDebugger.highlightUnnecessaryRerenders": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight components with unnecessary re-renders in editor"
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "reduxDebugger.start",
+          "when": "view == reduxStateTree",
+          "group": "navigation"
+        },
+        {
+          "command": "reduxDebugger.stop",
+          "when": "view == reduxStateTree",
+          "group": "navigation"
+        },
+        {
+          "command": "reduxDebugger.clear",
+          "when": "view == reduxActionHistory",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0",
+    "@vscode/test-electron": "^2.2.0",
+    "@vscode/vsce": "^2.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pradeep-kumar-dharmavarapu/vscode-redux-debugger"
+  },
+  "license": "MIT"
+}
