@@ -1,56 +1,81 @@
 # Redux State Debugger
 
-> Real-time Redux state inspector and unnecessary re-render detector for React applications, available in VS Code and as a Vercel-deployable web dashboard.
+> Real-time Redux state inspector and unnecessary re-render detector for React applications — lives inside VS Code, where you're actually writing code.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![VS Code](https://img.shields.io/badge/VS%20Code-1.74+-blueviolet)
-![License](https://img.shields.io/badge/license-MIT-green)
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code%20Marketplace-Install-blue?logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=pradeep-kumar-dharmavarapu.redux-state-debugger)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://marketplace.visualstudio.com/items?itemName=pradeep-kumar-dharmavarapu.redux-state-debugger)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![VS Code](https://img.shields.io/badge/VS%20Code-1.74+-blueviolet)](https://code.visualstudio.com/)
 
 ---
 
 ## Why This Exists
 
-While leading frontend architecture for a large-scale React platform at T-Mobile, I kept running into the same problem: engineers couldn't easily see *why* their components were slow. They'd add `console.log` statements everywhere, open Chrome DevTools in one window and VS Code in another, and lose context constantly.
+While leading frontend architecture for a large-scale React platform at T-Mobile, I kept running into the same problem: engineers couldn't easily see *why* their components were slow.
 
-So I built this extension — a Redux state visualiser and re-render detector that lives *inside your editor*, where you're actually writing code.
+The usual workflow looked like this:
+
+```
+Suspect performance issue
+→ Open Chrome DevTools
+→ Switch between DevTools and VS Code constantly
+→ Add console.log statements everywhere
+→ Search through Redux DevTools in a separate tab
+→ Try to correlate actions with component re-renders
+→ 20 minutes wasted per issue
+```
+
+I built this extension to collapse that into:
+
+```
+See re-render warning in VS Code sidebar
+→ Click component → file opens directly
+→ Fix the memoisation issue
+→ 2 minutes
+```
+
+It reduced debugging time across a team of 10+ engineers at T-Mobile and is now available for anyone running React + Redux.
 
 ---
 
 ## Features
 
-### Web Dashboard
-Deploy the debugger UI to Vercel and connect a running React/Redux app with a session id. The dashboard shows state, actions, render hotspots, payload previews, latency, and setup code for the active session.
-
-### VS Code Debugger Dashboard
-Open `Redux Debugger: Open Dashboard` inside the Extension Development Host or installed extension. It shows every top-level Redux slice, the action that last changed it, nested state paths, reducer duration, action payloads, and render hotspots.
-
 ### 🌳 Redux State Tree
-Visualise your entire Redux store as an interactive tree directly in the VS Code sidebar. Updates in real time as actions are dispatched.
+Visualise your entire Redux store as an interactive tree directly in the VS Code sidebar. Updates in real time as actions are dispatched — no tab switching required.
 
 ### ⚡ Action History
-See every dispatched action with:
+Every dispatched action tracked with:
 - Action type and payload
 - Timestamp
 - Processing duration (ms)
 
 ### 🚨 Re-render Detector
-Automatically flags components that are re-rendering unnecessarily:
-- Shows which components re-rendered and how many times
-- Lists which props changed (or didn't change — the common culprit)
-- Links directly to the component file
-- Warning threshold configurable per project
+Automatically flags components re-rendering unnecessarily:
+- Which components re-rendered and how many times
+- Which props changed — and which didn't (the common culprit)
+- Direct link to the component file
+- Configurable warning threshold per project
 
-### 📊 Performance Report Export
-Export a full JSON report of actions and re-renders for post-session analysis.
+### 📊 VS Code Dashboard
+Open `Redux Debugger: Open Dashboard` from the Command Palette for a full panel view — every Redux slice, last action, nested state paths, reducer duration, and render hotspots in one place.
+
+### 🌐 Vercel Web Dashboard
+Deploy the debugger UI to Vercel and connect any running React/Redux app via session ID. Full state, action, and render visualisation accessible from any browser.
+
+### 📤 Performance Report Export
+Export a full JSON report of actions and re-renders for post-session analysis or sharing with your team.
 
 ---
 
-## Installation
+## Install
 
-### From VS Code Marketplace
-Search for **"Redux State Debugger"** in the Extensions panel.
+**From VS Code** (recommended):
 
-### Manual Installation
+Search **"Redux State Debugger"** in the Extensions panel (`Ctrl+Shift+X`), or:
+
+[![Install from Marketplace](https://img.shields.io/badge/Install-VS%20Code%20Marketplace-blue?logo=visual-studio-code&style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=pradeep-kumar-dharmavarapu.redux-state-debugger)
+
+**From source:**
 ```bash
 git clone https://github.com/pradeep-kumar-dharmavarapu/vscode-redux-debugger
 cd vscode-redux-debugger
@@ -59,58 +84,34 @@ npm run package
 code --install-extension redux-state-debugger-1.0.0.vsix
 ```
 
-### Deploy the web dashboard to Vercel
-
+**Deploy web dashboard to Vercel:**
 ```bash
-npm install
 npm run build
 vercel deploy
 ```
-
-The deploy uses:
-- `web/index.html`, `web/app.js`, and `web/styles.css` for the dashboard
-- `api/update.js` for event ingestion
-- `api/events.js` for polling dashboard data
-- `api/session.js` for quick session creation
-- `api/clear.js` for clearing a dashboard session
-
-The included API uses warm serverless memory so the project is immediately deployable. For a public multi-user product, replace `api/_store.js` with durable storage such as Vercel KV, Upstash Redis, or Postgres before launch.
 
 ---
 
 ## Setup
 
-For a complete real-app walkthrough, see [docs/REAL_APP_SETUP.md](docs/REAL_APP_SETUP.md).
+For a full walkthrough see [docs/REAL_APP_SETUP.md](docs/REAL_APP_SETUP.md).
 
-### Step 1 — Add the middleware to your Redux store
+### Step 1 — Add middleware to your Redux store
 
 ```typescript
 import { configureStore } from '@reduxjs/toolkit';
 import { reduxDebuggerMiddleware } from './src/middleware';
-import rootReducer from './reducers';
 
 const store = configureStore({
   reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
       reduxDebuggerMiddleware({
-        port: 8765,                              // must match extension port
+        port: 8765,
         enabled: process.env.NODE_ENV === 'development',
         trackRerenders: true,
       })
     ),
-});
-
-export default store;
-```
-
-For a Vercel dashboard session, use the endpoint and session id shown in the dashboard:
-
-```typescript
-reduxDebuggerMiddleware({
-  endpoint: 'https://your-debugger.vercel.app',
-  sessionId: 'session-from-dashboard',
-  enabled: process.env.NODE_ENV === 'development',
 });
 ```
 
@@ -123,26 +124,22 @@ function MyExpensiveComponent({ data, onUpdate }: Props) {
   return <div>{/* ... */}</div>;
 }
 
-// Wrap with tracker — zero cost in production (NODE_ENV check built in)
-export default withRerenderTracking(MyExpensiveComponent, 'MyExpensiveComponent', {
-  endpoint: 'https://your-debugger.vercel.app',
-  sessionId: 'session-from-dashboard',
-});
+// Zero cost in production — NODE_ENV check is built in
+export default withRerenderTracking(MyExpensiveComponent, 'MyExpensiveComponent');
 ```
 
-### Step 3 — Start the debugger in VS Code
+### Step 3 — Start monitoring
 
-Open the Command Palette (`Cmd+Shift+P`) → **Redux Debugger: Start Monitoring**
+`Cmd+Shift+P` → **Redux Debugger: Start Monitoring**
 
-Run your React app. The sidebar panels will populate automatically.
+The sidebar panels populate automatically as your app runs.
 
 ---
 
 ## Configuration
 
-Add to your `.vscode/settings.json`:
-
 ```json
+// .vscode/settings.json
 {
   "reduxDebugger.enableRerenderDetection": true,
   "reduxDebugger.rerenderThreshold": 3,
@@ -160,83 +157,58 @@ Add to your `.vscode/settings.json`:
 
 ---
 
-## The Problem This Solves
-
-**Before this extension:**
-```
-Engineer suspects performance issue
-→ Opens Chrome DevTools
-→ Switches between DevTools and VS Code
-→ Adds console.log to component
-→ Dispatches action
-→ Searches through console output
-→ Tries to correlate with Redux DevTools
-→ 20 minutes wasted
-```
-
-**With Redux State Debugger:**
-```
-Engineer opens VS Code sidebar
-→ Sees re-render warning on component in real time
-→ Clicks component → opens file directly
-→ Fixes the memoisation issue
-→ 2 minutes
-```
-
-This is the exact workflow improvement I built at T-Mobile that reduced debugging time across a team of 10+ engineers.
-
----
-
 ## Architecture
 
 ```
 React App (browser)
-    │
-    ├── Redux Middleware (middleware.ts)
-    │   ├── Intercepts every dispatched action
-    │   ├── Captures state snapshots
-    │   └── POSTs to local VS Code server or Vercel API
-    │
-    └── withRerenderTracking HOC
-        └── Tracks component render counts + prop changes
+  │
+  ├── Redux Middleware (middleware.ts)
+  │     ├── Intercepts every dispatched action
+  │     ├── Captures state snapshots
+  │     └── POSTs to local VS Code server (port 8765) or Vercel API
+  │
+  └── withRerenderTracking HOC
+        └── Tracks render counts + prop diffs per component
 
 VS Code Extension
-    │
-    ├── HTTP Server (port 8765)
-    │   └── Receives data from browser
-    │
-    ├── ReduxStateTreeProvider → State Tree panel
-    ├── ActionHistoryProvider  → Action History panel
-    └── RerenderDetectorProvider → Re-render Detector panel
+  │
+  ├── HTTP Server (port 8765)
+  │     └── Receives events from the browser
+  │
+  ├── ReduxStateTreeProvider   → State Tree sidebar panel
+  ├── ActionHistoryProvider    → Action History sidebar panel
+  └── RerenderDetectorProvider → Re-render Detector sidebar panel
 
 Vercel Dashboard
-    │
-    ├── /api/update  → receives action, state, and render events
-    ├── /api/events  → dashboard polling endpoint
-    ├── /api/session → session id creation
-    └── /web/*       → browser dashboard UI
+  │
+  ├── /api/update   → receives action, state, and render events
+  ├── /api/events   → dashboard polling endpoint
+  ├── /api/session  → session ID creation
+  └── /web/*        → browser dashboard UI
 ```
 
 ---
 
-## Contributing
+## Roadmap
 
-PRs welcome. Key areas for contribution:
-- True WebSocket support (replace HTTP polling)
-- Time-travel debugging (replay actions)
-- Integration with Redux Toolkit's RTK Query
-- Support for Zustand and Jotai
+- [ ] WebSocket support (replace HTTP polling)
+- [ ] Time-travel debugging (replay actions)
+- [ ] RTK Query integration
+- [ ] Zustand and Jotai support
+- [ ] VS Code Marketplace ratings and reviews
+
+PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
 ## Author
 
-Built by [Pradeep Kumar Dharmavarapu](https://linkedin.com/in/pradeep-kumar-dharmavarapu) — Frontend Architect at Wipro, working on T-Mobile, Hitachi Energy, ABB, and Visa platforms.
+Built by **[Pradeep Kumar Dharmavarapu](https://linkedin.com/in/pradeep-kumar-dharmavarapu)** — Frontend Architect with 9+ years building large-scale React platforms at T-Mobile, Hitachi Energy, ABB, and Visa.
 
-This extension grew out of a real production problem on a large-scale React platform. If it saves you the same debugging pain, give it a ⭐.
+This extension grew out of a real production debugging problem at T-Mobile. If it saves your team the same pain, a ⭐ on this repo goes a long way.
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE)
