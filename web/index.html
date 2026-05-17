@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Redux State Debugger</title>
+    <link rel="stylesheet" href="/web/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="mark">R</div>
+          <div>
+            <h1>Redux State Debugger</h1>
+            <p id="connectionState">Waiting for events</p>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Session</span>
+          <input id="sessionInput" autocomplete="off" spellcheck="false">
+        </label>
+
+        <div class="actions-row">
+          <button id="newSessionButton" type="button">New</button>
+          <button id="copySnippetButton" type="button">Snippet</button>
+          <button id="clearButton" type="button">Clear</button>
+        </div>
+
+        <nav class="tabs" aria-label="Dashboard sections">
+          <button class="tab active" type="button" data-tab="state">State</button>
+          <button class="tab" type="button" data-tab="actions">Actions</button>
+          <button class="tab" type="button" data-tab="renders">Renders</button>
+          <button class="tab" type="button" data-tab="setup">Setup</button>
+        </nav>
+      </aside>
+
+      <main class="workspace">
+        <section class="metrics">
+          <div>
+            <span>Actions</span>
+            <strong id="actionCount">0</strong>
+          </div>
+          <div>
+            <span>State keys</span>
+            <strong id="stateKeyCount">0</strong>
+          </div>
+          <div>
+            <span>Render issues</span>
+            <strong id="renderCount">0</strong>
+          </div>
+          <div>
+            <span>Last event</span>
+            <strong id="lastEvent">Never</strong>
+          </div>
+        </section>
+
+        <section id="statePanel" class="panel active">
+          <div class="panel-heading">
+            <h2>State Tree</h2>
+            <input id="stateFilter" placeholder="Filter state keys" autocomplete="off">
+          </div>
+          <div id="stateTree" class="tree empty">No state received yet.</div>
+        </section>
+
+        <section id="actionsPanel" class="panel">
+          <div class="panel-heading">
+            <h2>Action Timeline</h2>
+            <input id="actionFilter" placeholder="Filter action types" autocomplete="off">
+          </div>
+          <div id="actionList" class="timeline empty">No actions received yet.</div>
+        </section>
+
+        <section id="rendersPanel" class="panel">
+          <div class="panel-heading">
+            <h2>Render Hotspots</h2>
+            <span class="hint">Sorted by repeated renders</span>
+          </div>
+          <div id="renderList" class="timeline empty">No render signals received yet.</div>
+        </section>
+
+        <section id="setupPanel" class="panel">
+          <div class="panel-heading">
+            <h2>Connect An App</h2>
+            <span class="hint">Use this session id in development only</span>
+          </div>
+          <pre id="setupSnippet" class="snippet"></pre>
+        </section>
+      </main>
+    </div>
+
+    <script src="/web/app.js"></script>
+  </body>
+</html>

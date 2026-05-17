@@ -1,37 +1,67 @@
 import * as vscode from 'vscode';
 import { ReduxStateTreeProvider } from './providers/ReduxStateTreeProvider';
-import { ActionHistoryProvider } from './providers/ActionHistoryProvider';
-import { RerenderDetectorProvider } from './providers/RerenderDetectorProvider';
+import { ActionHistoryProvider, RerenderDetectorProvider } from './providers/ActionHistoryProvider';
 import { ReduxMonitor } from './monitor/ReduxMonitor';
 import { WebSocketServer } from './server/WebSocketServer';
+import { DebugSession } from './debug/DebugSession';
+import { DashboardPanel } from './webview/DashboardPanel';
 
 let monitor: ReduxMonitor | undefined;
 let wsServer: WebSocketServer | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Redux State Debugger is now active');
+  const port = getNumberConfig('port', 8765);
 
   // Initialise providers
   const stateTreeProvider = new ReduxStateTreeProvider();
   const actionHistoryProvider = new ActionHistoryProvider();
   const rerenderDetectorProvider = new RerenderDetectorProvider();
+  const debugSession = new DebugSession(getNumberConfig('maxActionHistory', 100));
+  actionHistoryProvider.setMaxHistory(getNumberConfig('maxActionHistory', 100));
 
   // Register tree views
   vscode.window.registerTreeDataProvider('reduxStateTree', stateTreeProvider);
   vscode.window.registerTreeDataProvider('reduxActionHistory', actionHistoryProvider);
   vscode.window.registerTreeDataProvider('rerenderDetector', rerenderDetectorProvider);
 
-  // Initialise WebSocket server to receive data from browser DevTools
-  wsServer = new WebSocketServer(8765);
+  // Status bar item
+  const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  statusBar.text = `$(debug) Redux Debugger :${port}`;
+  statusBar.tooltip = `Redux Debugger listening at http://localhost:${port}/update`;
+  statusBar.command = 'reduxDebugger.start';
+  statusBar.show();
+  context.subscriptions.push(statusBar);
+
+  const refreshStatus = () => {
+    const stats = wsServer?.getStats();
+    statusBar.text = stats
+      ? `$(debug) Redux ${stats.actions} actions`
+      : `$(debug) Redux Debugger :${port}`;
+  };
+
+  // Initialise HTTP server to receive data from React apps
+  wsServer = new WebSocketServer(port);
+  wsServer.onError((error) => {
+    vscode.window.showErrorMessage(
+      `Redux Debugger could not listen on port ${port}: ${error.message}. Change reduxDebugger.port in VS Code settings.`
+    );
+  });
   wsServer.onStateUpdate((state) => {
+    debugSession.updateState(state);
     stateTreeProvider.update(state);
+    refreshStatus();
   });
   wsServer.onAction((action) => {
+    debugSession.addAction(action);
     actionHistoryProvider.addAction(action);
+    refreshStatus();
   });
   wsServer.onRerender((rerenderData) => {
+    debugSession.addRerender(rerenderData);
     rerenderDetectorProvider.addRerender(rerenderData);
-    if (rerenderData.count >= getConfig('rerenderThreshold')) {
+    refreshStatus();
+    if (rerenderData.count >= getNumberConfig('rerenderThreshold', 3)) {
       highlightUnnecessaryRerender(rerenderData);
     }
   });
@@ -40,7 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
   const startCmd = vscode.commands.registerCommand('reduxDebugger.start', () => {
     monitor = new ReduxMonitor(wsServer!);
     monitor.start();
-    vscode.window.showInformationMessage('Redux Debugger: Monitoring started on port 8765');
+    vscode.window.showInformationMessage(`Redux Debugger: Monitoring at http://localhost:${port}/update`);
   });
 
   const stopCmd = vscode.commands.registerCommand('reduxDebugger.stop', () => {
@@ -49,9 +79,16 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   const clearCmd = vscode.commands.registerCommand('reduxDebugger.clear', () => {
+    debugSession.clear();
+    stateTreeProvider.clear();
     actionHistoryProvider.clear();
     rerenderDetectorProvider.clear();
     vscode.window.showInformationMessage('Redux Debugger: History cleared');
+    refreshStatus();
+  });
+
+  const dashboardCmd = vscode.commands.registerCommand('reduxDebugger.openDashboard', () => {
+    DashboardPanel.show(context, debugSession);
   });
 
   const exportCmd = vscode.commands.registerCommand('reduxDebugger.exportReport', async () => {
@@ -66,14 +103,25 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  context.subscriptions.push(startCmd, stopCmd, clearCmd, exportCmd);
+  const copySetupCmd = vscode.commands.registerCommand('reduxDebugger.copySetupSnippet', async () => {
+    const snippet = `import { reduxDebuggerMiddleware } from 'redux-state-debugger/middleware';
 
-  // Status bar item
-  const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  statusBar.text = '$(debug) Redux Debugger';
-  statusBar.command = 'reduxDebugger.start';
-  statusBar.show();
-  context.subscriptions.push(statusBar);
+const store = configureStore({
+  reducer: rootReducer,
+  middleware: getDefaultMiddleware =>
+    getDefaultMiddleware().concat(
+      reduxDebuggerMiddleware({
+        port: ${port},
+        enabled: process.env.NODE_ENV === 'development',
+      })
+    ),
+});`;
+
+    await vscode.env.clipboard.writeText(snippet);
+    vscode.window.showInformationMessage('Redux Debugger middleware setup copied to clipboard');
+  });
+
+  context.subscriptions.push(startCmd, stopCmd, clearCmd, exportCmd, copySetupCmd, dashboardCmd);
 }
 
 function highlightUnnecessaryRerender(rerenderData: { component: string; count: number; file?: string }) {
@@ -95,6 +143,11 @@ function highlightUnnecessaryRerender(rerenderData: { component: string; count: 
 
 function getConfig(key: string) {
   return vscode.workspace.getConfiguration('reduxDebugger').get(key);
+}
+
+function getNumberConfig(key: string, fallback: number) {
+  const value = getConfig(key);
+  return typeof value === 'number' ? value : fallback;
 }
 
 function generateReport(

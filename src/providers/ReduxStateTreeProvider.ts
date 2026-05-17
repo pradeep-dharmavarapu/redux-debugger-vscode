@@ -48,6 +48,12 @@ export class ReduxStateTreeProvider implements vscode.TreeDataProvider<ReduxStat
     this._onDidChangeTreeData.fire(undefined);
   }
 
+  clear() {
+    this.state = {};
+    this.lastUpdateTime = undefined;
+    this._onDidChangeTreeData.fire(undefined);
+  }
+
   getTreeItem(element: ReduxStateNode): vscode.TreeItem {
     return element;
   }

@@ -8,6 +8,8 @@ export interface ReduxAction {
   timestamp: number;
   duration?: number; // ms to process
   stateDiff?: Record<string, unknown>;
+  changedSlices?: string[];
+  changedPaths?: string[];
 }
 
 export class ActionNode extends vscode.TreeItem {
@@ -26,6 +28,14 @@ export class ActionHistoryProvider implements vscode.TreeDataProvider<vscode.Tre
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
   private actions: ReduxAction[] = [];
   private maxHistory = 100;
+
+  setMaxHistory(maxHistory: number) {
+    this.maxHistory = Math.max(1, maxHistory);
+    if (this.actions.length > this.maxHistory) {
+      this.actions = this.actions.slice(0, this.maxHistory);
+      this._onDidChangeTreeData.fire(undefined);
+    }
+  }
 
   addAction(action: ReduxAction) {
     this.actions.unshift(action); // newest first
@@ -59,7 +69,7 @@ export class ActionHistoryProvider implements vscode.TreeDataProvider<vscode.Tre
     const items: vscode.TreeItem[] = [];
     if (element.action.payload !== undefined) {
       const payloadItem = new vscode.TreeItem('payload');
-      payloadItem.description = JSON.stringify(element.action.payload).substring(0, 60);
+      payloadItem.description = safeJsonPreview(element.action.payload, 60);
       payloadItem.iconPath = new vscode.ThemeIcon('symbol-object');
       items.push(payloadItem);
     }
@@ -105,6 +115,8 @@ export class RerenderDetectorProvider implements vscode.TreeDataProvider<vscode.
     if (existing) {
       existing.count += data.count;
       existing.lastSeen = data.lastSeen;
+      existing.props = data.props ?? existing.props;
+      existing.file = data.file ?? existing.file;
     } else {
       this.rerenders.set(data.component, { ...data });
     }
@@ -152,5 +164,15 @@ export class RerenderDetectorProvider implements vscode.TreeDataProvider<vscode.
       items.push(propsItem);
     }
     return items;
+  }
+}
+
+function safeJsonPreview(value: unknown, maxLength: number) {
+  try {
+    const json = JSON.stringify(value);
+    if (!json) return '';
+    return json.length > maxLength ? `${json.substring(0, maxLength)}...` : json;
+  } catch {
+    return '[Unserializable payload]';
   }
 }

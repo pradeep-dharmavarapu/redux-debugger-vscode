@@ -1,6 +1,6 @@
-# Redux State Debugger — VS Code Extension
+# Redux State Debugger
 
-> Real-time Redux state inspector and unnecessary re-render detector for React applications, built directly into VS Code.
+> Real-time Redux state inspector and unnecessary re-render detector for React applications, available in VS Code and as a Vercel-deployable web dashboard.
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.74+-blueviolet)
@@ -17,6 +17,12 @@ So I built this extension — a Redux state visualiser and re-render detector th
 ---
 
 ## Features
+
+### Web Dashboard
+Deploy the debugger UI to Vercel and connect a running React/Redux app with a session id. The dashboard shows state, actions, render hotspots, payload previews, latency, and setup code for the active session.
+
+### VS Code Debugger Dashboard
+Open `Redux Debugger: Open Dashboard` inside the Extension Development Host or installed extension. It shows every top-level Redux slice, the action that last changed it, nested state paths, reducer duration, action payloads, and render hotspots.
 
 ### 🌳 Redux State Tree
 Visualise your entire Redux store as an interactive tree directly in the VS Code sidebar. Updates in real time as actions are dispatched.
@@ -53,9 +59,28 @@ npm run package
 code --install-extension redux-state-debugger-1.0.0.vsix
 ```
 
+### Deploy the web dashboard to Vercel
+
+```bash
+npm install
+npm run build
+vercel deploy
+```
+
+The deploy uses:
+- `web/index.html`, `web/app.js`, and `web/styles.css` for the dashboard
+- `api/update.js` for event ingestion
+- `api/events.js` for polling dashboard data
+- `api/session.js` for quick session creation
+- `api/clear.js` for clearing a dashboard session
+
+The included API uses warm serverless memory so the project is immediately deployable. For a public multi-user product, replace `api/_store.js` with durable storage such as Vercel KV, Upstash Redis, or Postgres before launch.
+
 ---
 
 ## Setup
+
+For a complete real-app walkthrough, see [docs/REAL_APP_SETUP.md](docs/REAL_APP_SETUP.md).
 
 ### Step 1 — Add the middleware to your Redux store
 
@@ -79,6 +104,16 @@ const store = configureStore({
 export default store;
 ```
 
+For a Vercel dashboard session, use the endpoint and session id shown in the dashboard:
+
+```typescript
+reduxDebuggerMiddleware({
+  endpoint: 'https://your-debugger.vercel.app',
+  sessionId: 'session-from-dashboard',
+  enabled: process.env.NODE_ENV === 'development',
+});
+```
+
 ### Step 2 — (Optional) Track component re-renders
 
 ```typescript
@@ -89,7 +124,10 @@ function MyExpensiveComponent({ data, onUpdate }: Props) {
 }
 
 // Wrap with tracker — zero cost in production (NODE_ENV check built in)
-export default withRerenderTracking(MyExpensiveComponent, 'MyExpensiveComponent');
+export default withRerenderTracking(MyExpensiveComponent, 'MyExpensiveComponent', {
+  endpoint: 'https://your-debugger.vercel.app',
+  sessionId: 'session-from-dashboard',
+});
 ```
 
 ### Step 3 — Start the debugger in VS Code
@@ -157,7 +195,7 @@ React App (browser)
     ├── Redux Middleware (middleware.ts)
     │   ├── Intercepts every dispatched action
     │   ├── Captures state snapshots
-    │   └── POSTs to local HTTP server
+    │   └── POSTs to local VS Code server or Vercel API
     │
     └── withRerenderTracking HOC
         └── Tracks component render counts + prop changes
@@ -170,6 +208,13 @@ VS Code Extension
     ├── ReduxStateTreeProvider → State Tree panel
     ├── ActionHistoryProvider  → Action History panel
     └── RerenderDetectorProvider → Re-render Detector panel
+
+Vercel Dashboard
+    │
+    ├── /api/update  → receives action, state, and render events
+    ├── /api/events  → dashboard polling endpoint
+    ├── /api/session → session id creation
+    └── /web/*       → browser dashboard UI
 ```
 
 ---
