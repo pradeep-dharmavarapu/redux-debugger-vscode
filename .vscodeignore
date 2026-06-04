@@ -1,0 +1,14 @@
+.vscode/**
+src/**
+test/**
+api/**
+web/**
+docs/REAL_APP_SETUP.md
+node_modules/**
+.vscode-test/**
+*.vsix
+tsconfig.json
+vercel.json
+package-lock.json
+.DS_Store
+**/.DS_Store

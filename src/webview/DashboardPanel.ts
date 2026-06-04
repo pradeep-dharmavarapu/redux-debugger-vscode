@@ -12,7 +12,7 @@ export class DashboardPanel {
     this.panel.webview.options = {
       enableScripts: true,
     };
-    this.panel.webview.html = this.getHtml(this.session.getSnapshot());
+    this.panel.webview.html = getDashboardHtml(this.session.getSnapshot());
 
     this.disposables.push(
       this.session.onDidChange(snapshot => {
@@ -50,9 +50,11 @@ export class DashboardPanel {
     }
   }
 
-  private getHtml(snapshot: DebugSnapshot) {
-    const nonce = getNonce();
-    return `<!doctype html>
+}
+
+export function getDashboardHtml(snapshot: DebugSnapshot) {
+  const nonce = getNonce();
+  return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -391,7 +393,6 @@ export class DashboardPanel {
   </script>
 </body>
 </html>`;
-  }
 }
 
 function getNonce() {

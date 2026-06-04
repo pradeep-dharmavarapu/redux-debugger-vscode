@@ -45,6 +45,30 @@ Export a full JSON report of actions and re-renders for post-session analysis.
 
 ---
 
+## Real-World Validation
+
+This extension includes an integration suite that exercises the compiled debugger against realistic Redux workflows, not just isolated unit tests.
+
+Run:
+
+```bash
+npm test
+```
+
+The suite verifies:
+
+- Auth, cart, todos, search, dashboard, and performance-style Redux actions are captured by the middleware.
+- State updates, changed slices, and changed state paths are sent to the VS Code debugger endpoint.
+- Sensitive fields such as tokens and passwords are redacted before leaving the app.
+- A burst of 250 actions is ingested without dropped action/state events.
+- Oversized payloads are truncated before transmission.
+- Invalid debugger messages are rejected without crashing the server.
+- Repeated component renders are reported with changed prop names.
+
+See [docs/DEBUGGER_PROOF_PLAN.md](docs/DEBUGGER_PROOF_PLAN.md) for the full proof plan, Redux DevTools comparison, and remaining launch-hardening work.
+
+---
+
 ## Installation
 
 ### From VS Code Marketplace

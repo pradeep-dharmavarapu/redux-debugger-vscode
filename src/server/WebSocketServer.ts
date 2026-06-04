@@ -1,5 +1,4 @@
 import * as http from 'http';
-import * as vscode from 'vscode';
 
 type StateUpdateHandler = (state: Record<string, unknown>) => void;
 type ActionHandler = (action: { type: string; payload?: unknown; timestamp: number; duration?: number }) => void;
@@ -76,9 +75,9 @@ export class WebSocketServer {
       }
     });
 
-    this.server.listen(port, () => {
+    this.server.listen(port, '127.0.0.1', () => {
       this.listening = true;
-      console.log(`Redux Debugger server listening on port ${port}`);
+      console.log(`Redux Debugger server listening on port ${this.getPort()}`);
     });
 
     this.server.on('error', error => {
@@ -120,7 +119,11 @@ export class WebSocketServer {
   onError(handler: ErrorHandler) { this.errorHandlers.push(handler); }
 
   isListening() { return this.listening; }
-  getPort() { return this.port; }
+  getPort() {
+    const address = this.server.address();
+    if (typeof address === 'object' && address?.port) return address.port;
+    return this.port;
+  }
   getStats() { return { ...this.stats }; }
 
   close() { this.server.close(); }

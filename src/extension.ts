@@ -5,6 +5,7 @@ import { ReduxMonitor } from './monitor/ReduxMonitor';
 import { WebSocketServer } from './server/WebSocketServer';
 import { DebugSession } from './debug/DebugSession';
 import { DashboardPanel } from './webview/DashboardPanel';
+import { DashboardViewProvider } from './webview/DashboardViewProvider';
 
 let monitor: ReduxMonitor | undefined;
 let wsServer: WebSocketServer | undefined;
@@ -19,11 +20,20 @@ export function activate(context: vscode.ExtensionContext) {
   const rerenderDetectorProvider = new RerenderDetectorProvider();
   const debugSession = new DebugSession(getNumberConfig('maxActionHistory', 100));
   actionHistoryProvider.setMaxHistory(getNumberConfig('maxActionHistory', 100));
+  const dashboardViewProvider = new DashboardViewProvider(debugSession);
 
   // Register tree views
   vscode.window.registerTreeDataProvider('reduxStateTree', stateTreeProvider);
   vscode.window.registerTreeDataProvider('reduxActionHistory', actionHistoryProvider);
   vscode.window.registerTreeDataProvider('rerenderDetector', rerenderDetectorProvider);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      DashboardViewProvider.viewType,
+      dashboardViewProvider,
+      { webviewOptions: { retainContextWhenHidden: true } }
+    ),
+    dashboardViewProvider
+  );
 
   // Status bar item
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -88,6 +98,12 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   const dashboardCmd = vscode.commands.registerCommand('reduxDebugger.openDashboard', () => {
+    vscode.commands.executeCommand('workbench.view.extension.reduxDebugger');
+    vscode.commands.executeCommand('reduxDashboard.focus');
+    dashboardViewProvider.reveal();
+  });
+
+  const dashboardEditorCmd = vscode.commands.registerCommand('reduxDebugger.openDashboardEditor', () => {
     DashboardPanel.show(context, debugSession);
   });
 
@@ -121,7 +137,7 @@ const store = configureStore({
     vscode.window.showInformationMessage('Redux Debugger middleware setup copied to clipboard');
   });
 
-  context.subscriptions.push(startCmd, stopCmd, clearCmd, exportCmd, copySetupCmd, dashboardCmd);
+  context.subscriptions.push(startCmd, stopCmd, clearCmd, exportCmd, copySetupCmd, dashboardCmd, dashboardEditorCmd);
 }
 
 function highlightUnnecessaryRerender(rerenderData: { component: string; count: number; file?: string }) {

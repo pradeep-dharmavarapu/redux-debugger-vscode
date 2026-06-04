@@ -34,6 +34,7 @@ interface RerenderTracker {
 const rerenderTracker: RerenderTracker = {};
 const DEFAULT_REDACT_KEYS = ['password', 'token', 'secret', 'authorization', 'cookie'];
 const MAX_DIFF_PATHS = 200;
+const deliveryQueues = new Map<string, Promise<void>>();
 
 type ComponentType<P> = (props: P) => unknown;
 
@@ -95,17 +96,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-async function postToDebugger(updateUrl: string, type: string, payload: unknown, sessionId?: string) {
-  try {
-    await fetch(updateUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, payload, sessionId }),
-      keepalive: true,
+function postToDebugger(updateUrl: string, type: string, payload: unknown, sessionId?: string) {
+  const previousDelivery = deliveryQueues.get(updateUrl) ?? Promise.resolve();
+  const nextDelivery = previousDelivery
+    .catch(() => undefined)
+    .then(async () => {
+      try {
+        await fetch(updateUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type, payload, sessionId }),
+        });
+      } catch {
+        // Debugger not running or unreachable. App behavior must never be affected.
+      }
     });
-  } catch {
-    // Debugger not running or unreachable. App behavior must never be affected.
-  }
+
+  deliveryQueues.set(updateUrl, nextDelivery);
 }
 
 export function reduxDebuggerMiddleware(config: DebuggerConfig = {}) {

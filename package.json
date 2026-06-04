@@ -10,7 +10,7 @@
   },
   "categories": ["Debuggers", "Other"],
   "keywords": ["redux", "react", "debugger", "performance", "re-render"],
-  "activationEvents": [
+    "activationEvents": [
     "onStartupFinished",
     "onCommand:reduxDebugger.start",
     "onCommand:reduxDebugger.stop",
@@ -18,6 +18,8 @@
     "onCommand:reduxDebugger.exportReport",
     "onCommand:reduxDebugger.copySetupSnippet",
     "onCommand:reduxDebugger.openDashboard",
+    "onCommand:reduxDebugger.openDashboardEditor",
+    "onView:reduxDashboard",
     "onView:reduxStateTree",
     "onView:reduxActionHistory",
     "onView:rerenderDetector",
@@ -65,10 +67,20 @@
         "command": "reduxDebugger.openDashboard",
         "title": "Redux Debugger: Open Dashboard",
         "icon": "$(dashboard)"
+      },
+      {
+        "command": "reduxDebugger.openDashboardEditor",
+        "title": "Redux Debugger: Open Dashboard in Editor",
+        "icon": "$(open-preview)"
       }
     ],
     "views": {
       "reduxDebugger": [
+        {
+          "id": "reduxDashboard",
+          "name": "Dashboard",
+          "icon": "$(dashboard)"
+        },
         {
           "id": "reduxStateTree",
           "name": "Redux State Tree",
@@ -119,6 +131,11 @@
     "menus": {
       "view/title": [
         {
+          "command": "reduxDebugger.openDashboardEditor",
+          "when": "view == reduxDashboard",
+          "group": "navigation@0"
+        },
+        {
           "command": "reduxDebugger.openDashboard",
           "when": "view == reduxStateTree",
           "group": "navigation@0"
@@ -148,7 +165,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile",
-    "test": "node ./out/test/runTest.js",
+    "test": "node ./test/runTest.js",
     "package": "vsce package",
     "publish": "vsce publish"
   },
