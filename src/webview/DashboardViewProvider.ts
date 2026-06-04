@@ -7,6 +7,7 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
 
   private view: vscode.WebviewView | undefined;
   private readonly disposables: vscode.Disposable[] = [];
+  private readonly resolveWaiters: Array<() => void> = [];
 
   constructor(private readonly session: DebugSession) {
     this.disposables.push(
@@ -28,6 +29,10 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
         this.view = undefined;
       }
     });
+
+    while (this.resolveWaiters.length) {
+      this.resolveWaiters.pop()?.();
+    }
   }
 
   reveal() {
@@ -35,6 +40,22 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({
       type: 'snapshot',
       snapshot: this.session.getSnapshot(),
+    });
+  }
+
+  isResolved() {
+    return this.view !== undefined;
+  }
+
+  waitForResolve(timeoutMs = 750) {
+    if (this.view) return Promise.resolve(true);
+
+    return new Promise<boolean>(resolve => {
+      const timeout = setTimeout(() => resolve(false), timeoutMs);
+      this.resolveWaiters.push(() => {
+        clearTimeout(timeout);
+        resolve(true);
+      });
     });
   }
 

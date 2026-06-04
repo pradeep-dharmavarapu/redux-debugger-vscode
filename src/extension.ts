@@ -97,10 +97,23 @@ export function activate(context: vscode.ExtensionContext) {
     refreshStatus();
   });
 
-  const dashboardCmd = vscode.commands.registerCommand('reduxDebugger.openDashboard', () => {
-    vscode.commands.executeCommand('workbench.view.extension.reduxDebugger');
-    vscode.commands.executeCommand('reduxDashboard.focus');
-    dashboardViewProvider.reveal();
+  const dashboardCmd = vscode.commands.registerCommand('reduxDebugger.openDashboard', async () => {
+    try {
+      await vscode.commands.executeCommand('workbench.view.extension.reduxDebugger');
+      await vscode.commands.executeCommand('reduxDashboard.focus');
+    } catch {
+      await vscode.commands.executeCommand('workbench.view.extension.reduxDebugger');
+    }
+
+    const openedSideView = dashboardViewProvider.isResolved()
+      || await dashboardViewProvider.waitForResolve();
+
+    if (openedSideView) {
+      dashboardViewProvider.reveal();
+      return;
+    }
+
+    DashboardPanel.show(context, debugSession);
   });
 
   const dashboardEditorCmd = vscode.commands.registerCommand('reduxDebugger.openDashboardEditor', () => {
