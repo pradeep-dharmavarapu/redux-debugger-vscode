@@ -2,7 +2,7 @@
   "name": "redux-state-debugger",
   "displayName": "Redux State Debugger",
   "description": "Real-time Redux state inspector and unnecessary re-render detector for React applications",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "publisher": "pradeep-kumar-dharmavarapu",
   "icon": "media/icon.png",
   "engines": {
