@@ -44,7 +44,7 @@
         {
           "id": "reduxDebugger",
           "title": "Redux Debugger",
-          "icon": "media/icon.png"
+          "icon": "media/activitybar.svg"
         }
       ]
     },
