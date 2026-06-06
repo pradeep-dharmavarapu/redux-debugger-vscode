@@ -142,12 +142,13 @@ test('middleware captures real-world Redux actions, sanitized state, changed sli
     dispatchRealWorldScenario(store);
 
     await waitFor(() => {
-      assert.equal(harness.events.actions.length, 8);
-      assert.equal(harness.events.states.length, 8);
+      assert.equal(harness.events.actions.length, 9);
+      assert.equal(harness.events.states.length, 9);
     });
 
     const actionTypes = harness.events.actions.map(action => action.type);
     assert.deepEqual(actionTypes, [
+      '@@redux-debugger/INIT_STATE',
       'auth/loginFulfilled',
       'cart/itemAdded',
       'cart/quantityChanged',
@@ -158,7 +159,25 @@ test('middleware captures real-world Redux actions, sanitized state, changed sli
       'dashboard/widgetsLoaded',
     ]);
 
-    const loginAction = harness.events.actions[0];
+    const initialAction = harness.events.actions[0];
+    assert.equal(initialAction.meta.source, 'initial-state');
+    assert.deepEqual(initialAction.changedSlices, [
+      'auth',
+      'cart',
+      'todos',
+      'search',
+      'dashboard',
+      'performance',
+    ]);
+
+    const initialState = harness.events.states[0];
+    assert.equal(initialState.auth.user, null);
+    assert.equal(initialState.cart.totals.grandTotal, 0);
+    assert.equal(initialState.todos.filter, 'all');
+    assert.equal(initialState.search.loading, false);
+    assert.equal(initialState.dashboard.widgets.length, 0);
+
+    const loginAction = harness.events.actions[1];
     assert.equal(loginAction.payload.token, '[Redacted]');
     assert.equal(loginAction.payload.password, '[Redacted]');
     assert.deepEqual(loginAction.changedSlices, ['auth']);
@@ -170,9 +189,82 @@ test('middleware captures real-world Redux actions, sanitized state, changed sli
     assert.equal(finalState.dashboard.widgets.length, 6);
 
     const stats = harness.server.getStats();
-    assert.equal(stats.actions, 8);
-    assert.equal(stats.stateUpdates, 8);
+    assert.equal(stats.actions, 9);
+    assert.equal(stats.stateUpdates, 9);
     assert.equal(stats.invalidMessages, 0);
+  } finally {
+    harness.close();
+  }
+});
+
+test('middleware sends initial store and slice details without waiting for an app action', async () => {
+  const harness = createHarness();
+  try {
+    const updateUrl = await harness.ready();
+    createRealWorldStore([
+      reduxDebuggerMiddleware({
+        endpoint: updateUrl,
+        updatePath: '',
+      }),
+    ]);
+
+    await waitFor(() => {
+      assert.equal(harness.events.actions.length, 1);
+      assert.equal(harness.events.states.length, 1);
+    });
+
+    assert.equal(harness.events.actions[0].type, '@@redux-debugger/INIT_STATE');
+    assert.deepEqual(harness.events.actions[0].changedSlices, [
+      'auth',
+      'cart',
+      'todos',
+      'search',
+      'dashboard',
+      'performance',
+    ]);
+    assert.deepEqual(Object.keys(harness.events.states[0]), [
+      'auth',
+      'cart',
+      'todos',
+      'search',
+      'dashboard',
+      'performance',
+    ]);
+  } finally {
+    harness.close();
+  }
+});
+
+test('middleware can disable automatic initial state capture when configured', async () => {
+  const harness = createHarness();
+  try {
+    const updateUrl = await harness.ready();
+    const store = createRealWorldStore([
+      reduxDebuggerMiddleware({
+        endpoint: updateUrl,
+        updatePath: '',
+        sendInitialState: false,
+      }),
+    ]);
+
+    await delay(150);
+    assert.equal(harness.events.actions.length, 0);
+    assert.equal(harness.events.states.length, 0);
+
+    store.dispatch({
+      type: 'todos/todoAdded',
+      payload: {
+        id: 'todo-opt-out',
+        title: 'Initial state capture can be disabled',
+        project: 'configuration',
+      },
+    });
+
+    await waitFor(() => {
+      assert.equal(harness.events.actions.length, 1);
+      assert.equal(harness.events.states.length, 1);
+    });
+    assert.equal(harness.events.actions[0].type, 'todos/todoAdded');
   } finally {
     harness.close();
   }
@@ -189,11 +281,12 @@ test('middleware handles high-volume action bursts without dropped events', asyn
     dispatchBurstScenario(store, 250);
 
     await waitFor(() => {
-      assert.equal(harness.events.actions.length, 250);
-      assert.equal(harness.events.states.length, 250);
+      assert.equal(harness.events.actions.length, 251);
+      assert.equal(harness.events.states.length, 251);
     }, 10000);
 
-    assert.equal(harness.events.actions[0].type, 'perf/tick');
+    assert.equal(harness.events.actions[0].type, '@@redux-debugger/INIT_STATE');
+    assert.equal(harness.events.actions[1].type, 'perf/tick');
     assert.equal(harness.events.actions.at(-1).payload.index, 249);
     assert.equal(harness.events.states.at(-1).performance.tick, 250);
   } finally {
@@ -222,11 +315,12 @@ test('middleware truncates oversized payloads before sending to the debugger', a
       })),
     });
 
-    await waitFor(() => assert.equal(harness.events.actions.length, 1));
+    await waitFor(() => assert.equal(harness.events.actions.length, 2));
 
-    assert.equal(harness.events.actions[0].payload.truncated, true);
-    assert.ok(harness.events.actions[0].payload.bytes > 500);
-    assert.ok(harness.events.actions[0].payload.preview.length <= 500);
+    assert.equal(harness.events.actions[0].type, '@@redux-debugger/INIT_STATE');
+    assert.equal(harness.events.actions[1].payload.truncated, true);
+    assert.ok(harness.events.actions[1].payload.bytes > 500);
+    assert.ok(harness.events.actions[1].payload.preview.length <= 500);
   } finally {
     harness.close();
   }

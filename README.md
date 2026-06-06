@@ -58,6 +58,7 @@ npm test
 The suite verifies:
 
 - Auth, cart, todos, search, dashboard, and performance-style Redux actions are captured by the middleware.
+- Initial store state and slice details are captured automatically before the app dispatches any user action.
 - State updates, changed slices, and changed state paths are sent to the VS Code debugger endpoint.
 - Sensitive fields such as tokens and passwords are redacted before leaving the app.
 - A burst of 250 actions is ingested without dropped action/state events.
@@ -120,6 +121,7 @@ const store = configureStore({
       reduxDebuggerMiddleware({
         port: 8765,                              // must match extension port
         enabled: process.env.NODE_ENV === 'development',
+        sendInitialState: true,                  // default: populate slices before first action
         trackRerenders: true,
       })
     ),
@@ -135,6 +137,7 @@ reduxDebuggerMiddleware({
   endpoint: 'https://your-debugger.vercel.app',
   sessionId: 'session-from-dashboard',
   enabled: process.env.NODE_ENV === 'development',
+  sendInitialState: true,
 });
 ```
 

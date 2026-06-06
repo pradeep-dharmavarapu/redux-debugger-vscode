@@ -17,6 +17,7 @@ The current integration suite compiles the extension code and validates the debu
 - Health endpoint responds with service status and stats.
 - Unsupported messages are rejected without crashing the server.
 - Middleware captures action history and state updates from auth, cart, todos, search, and dashboard slices.
+- Middleware captures the initial store state and slice names automatically before any app action is dispatched.
 - Sensitive fields such as tokens and passwords are redacted before leaving the app.
 - Changed slices and changed state paths are reported per action.
 - High-volume bursts of 250 actions are ingested without dropped action/state events.

@@ -16,6 +16,7 @@
 interface DebuggerConfig {
   port?: number;
   enabled?: boolean;
+  sendInitialState?: boolean;
   trackRerenders?: boolean;
   endpoint?: string;
   sessionId?: string;
@@ -118,6 +119,7 @@ function postToDebugger(updateUrl: string, type: string, payload: unknown, sessi
 export function reduxDebuggerMiddleware(config: DebuggerConfig = {}) {
   const {
     enabled = process.env.NODE_ENV === 'development',
+    sendInitialState = true,
     maxPayloadBytes = 150_000,
     redactKeys = DEFAULT_REDACT_KEYS,
   } = config;
@@ -127,9 +129,29 @@ export function reduxDebuggerMiddleware(config: DebuggerConfig = {}) {
     return () => (next: (action: unknown) => unknown) => (action: unknown) => next(action);
   }
 
-  return (store: { getState: () => unknown }) =>
-    (next: (action: unknown) => unknown) =>
-    (action: { type: string; payload?: unknown }) => {
+  return (store: { getState: () => unknown }) => {
+    if (sendInitialState) {
+      const rawInitialState = store.getState();
+      const initialState = truncatePayload(
+        sanitize(rawInitialState, redactKeys),
+        maxPayloadBytes
+      );
+      const initialSlices = Object.keys(isRecord(rawInitialState) ? rawInitialState : {});
+      postToDebugger(updateUrl, 'ACTION', {
+        type: '@@redux-debugger/INIT_STATE',
+        timestamp: Date.now(),
+        duration: 0,
+        changedSlices: initialSlices,
+        changedPaths: initialSlices,
+        meta: {
+          source: 'initial-state',
+        },
+      }, config.sessionId);
+      postToDebugger(updateUrl, 'STATE_UPDATE', initialState, config.sessionId);
+    }
+
+    return (next: (action: unknown) => unknown) =>
+      (action: { type: string; payload?: unknown }) => {
       const previousState = store.getState();
       const start = performance.now();
       const result = next(action);
@@ -157,6 +179,7 @@ export function reduxDebuggerMiddleware(config: DebuggerConfig = {}) {
 
       return result;
     };
+  };
 }
 
 /**
